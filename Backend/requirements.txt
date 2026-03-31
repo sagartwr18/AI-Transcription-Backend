@@ -1,0 +1,9 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+python-dotenv>=1.0.1
+assemblyai>=0.33.0
+python-multipart>=0.0.9
+deepgram-sdk>=3.7.0
+google-genai==1.69.0
