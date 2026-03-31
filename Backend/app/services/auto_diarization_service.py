@@ -20,6 +20,8 @@ MIN_WORDS_TO_KEEP = 20
 EXTRA_SPEAKERS = 10
 SESSION_INIT_TIMEOUT_SECONDS = 10
 PROVIDER_MAX_SPEAKERS_CAP = 10
+KEEPALIVE_IDLE_SECONDS = 8
+KEEPALIVE_POLL_SECONDS = 1
 
 _live_lock = threading.Lock()
 _live_thread: threading.Thread | None = None
@@ -355,6 +357,31 @@ def _run_realtime_session() -> None:
             listener_thread.start()
             listener_ready.wait(timeout=5)
 
+            last_audio_time = [time.monotonic()]
+
+            def _keepalive_target() -> None:
+                while not _stream_stop_event.is_set():
+                    time.sleep(KEEPALIVE_POLL_SECONDS)
+                    idle_seconds = time.monotonic() - last_audio_time[0]
+                    if idle_seconds < KEEPALIVE_IDLE_SECONDS:
+                        continue
+
+                    try:
+                        conn.send_keep_alive()
+                        logger.debug(
+                            "Sent Deepgram KeepAlive for automatic diarization after %.1fs idle",
+                            idle_seconds,
+                        )
+                    except Exception as keepalive_exc:
+                        logger.warning(
+                            "Automatic diarization KeepAlive send failed: %s",
+                            keepalive_exc,
+                        )
+                        break
+
+            keepalive_thread = threading.Thread(target=_keepalive_target, daemon=True)
+            keepalive_thread.start()
+
             _append_live_update({
                 "type": "system",
                 "speaker_label": "SYSTEM",
@@ -375,8 +402,11 @@ def _run_realtime_session() -> None:
 
                     if chunk:
                         conn.send_media(chunk)
+                        last_audio_time[0] = time.monotonic()
                         time.sleep(0.002)
             finally:
+                _stream_stop_event.set()
+                keepalive_thread.join(timeout=3)
                 try:
                     conn.send_close_stream()
                 except Exception:
