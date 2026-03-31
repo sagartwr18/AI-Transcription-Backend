@@ -4,7 +4,6 @@ import threading
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
-
 from deepgram import DeepgramClient
 from deepgram.core.events import EventType
 from deepgram.listen.v1.types.listen_v1results import ListenV1Results
