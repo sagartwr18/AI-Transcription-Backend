@@ -388,7 +388,7 @@ class SummaryService:
             "conversational filler (e.g., 'um,' 'can you hear me,' 'thanks for having me').\n\n"
             "Instructions:\n"
             "1. Identify Speaker: Use the exact label provided in the transcript.\n"
-            "2. Contextual Summary: Write a 2–4 sentence summary. Do not just list topics; "
+            "2. Contextual Summary: Write a 20-word summary of the speaker's contribution. Do not just list topics; "
             "explain how their contribution moved the discussion forward or what unique "
             "perspective they offered.\n"
             f"3. High-Signal Key Points: Extract exactly {key_points_instruction} bullet points "
@@ -406,7 +406,7 @@ class SummaryService:
             "Required JSON format:\n"
             "{\n"
             '  "speaker": "<exact speaker name>",\n'
-            '  "contextual_summary": "<2–4 sentence summary>",\n'
+            '  "contextual_summary": "<20-word summary>",\n'
             '  "key_points": [\n'
             f'    // Must contain exactly {key_points_instruction} bullet strings\n'
             '    "• <specific insight or data point>",\n'
@@ -498,14 +498,14 @@ class SummaryService:
             "Rules:\n"
             "1. Preserve factual fidelity. Do not add claims that are not supported by the transcript or current summary.\n"
             "2. Keep the exact speaker label.\n"
-            "3. Rewrite the contextual summary into 2-4 strong sentences.\n"
+            "3. Rewrite a 20-word summary of the speaker's contribution.\n"
             f"4. Return exactly {key_points_instruction} high-signal key points. No fewer than {key_points_range.split('-')[0]}, no more than {key_points_range.split('-')[1]}.\n"
             "5. Prefer concrete and specific wording over generic phrases.\n\n"
             "CRITICAL: You MUST respond with ONLY a valid JSON object.\n\n"
             "Required JSON format:\n"
             "{\n"
             '  "speaker": "<exact speaker name>",\n'
-            '  "contextual_summary": "<2-4 sentence improved summary>",\n'
+            '  "contextual_summary": "<20-word improved summary>",\n'
             '  "key_points": [\n'
             '    "<specific improved point>",\n'
             '    "<specific improved point>"\n'
