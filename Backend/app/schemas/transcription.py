@@ -11,21 +11,12 @@ class AssemblyFinalizeRequest(BaseModel):
     )
 
 class SpeakerSwitchRequest(BaseModel):
+    session_id: str
     speaker_name: str
 
-# class RealtimeStartRequest(BaseModel):
-#     session_name: str = Field(..., description='Name of the realtime transcription session')
-#     number_of_speakers: int = Field(
-#         ...,
-#         ge=1,
-#         description='Expected speaker count. Backend will use this value + 10 for max_speakers.',
-#     )
-#     sample_rate: int = Field(
-#         default=48000,
-#         ge=8000,
-#         le=96000,
-#         description='Incoming browser microphone sample rate.',
-#     )
+# New model needed for stop-live
+class SessionIdRequest(BaseModel):
+    session_id: str
 
 class RealtimeStartRequest(BaseModel):
     session_name: str = Field(..., description='Name of the realtime transcription session')
@@ -60,6 +51,7 @@ class SummaryType(str, Enum):
     conference_summary = "conference_summary"
 
 class SummaryRequest(BaseModel):
+    session_name: str = Field(..., description='Name of the session')
     summary_type: SummaryType = Field(        # ← add this field
         ...,
         description="'speaker_summary' → per-speaker summaries. 'conference_summary' → full executive summary.",
@@ -77,6 +69,7 @@ class SummaryRequest(BaseModel):
 
 
 class RegenerateSummaryRequest(BaseModel):
+    session_name: str = Field(..., description='Name of the session')
     summary_type: SummaryType = Field(
         ...,
         description="'speaker_summary' → improve per-speaker summaries. 'conference_summary' → improve full executive summary.",
@@ -97,4 +90,8 @@ class RegenerateSummaryRequest(BaseModel):
     improvement_instructions: str = Field(
         default='Improve clarity, accuracy, and usefulness while preserving the original meaning.',
         description='Optional guidance describing how the regenerated summary should be improved.',
+    )
+    summary_record_id: str | None = Field(
+        default=None,
+        description='Optional MongoDB record ID. When provided, the regenerated summary replaces the existing record in the database.',
     )

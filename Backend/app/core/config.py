@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     ASSEMBLYAI_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     DEEPGRAM_API_KEY: str | None = None
+    MONGODB_URI: str | None = None
+    MONGODB_DB_NAME: str = 'ai_transcription'
+    MONGODB_SUMMARIES_COLLECTION: str = 'summaries'
 
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / '.env', extra='ignore')
 

@@ -48,6 +48,7 @@ class SummaryService:
 
     def create_summary(
         self,
+        session_name: str,
         summary_type: SummaryType,
         per_speaker_text: dict[str, str],
         full_text: str,
@@ -68,7 +69,7 @@ class SummaryService:
                 raise ValueError(
                     "per_speaker_text must not be empty when summary_type='speaker_summary'."
                 )
-            return self.generate_per_speaker_summary(per_speaker_text)
+            return self.generate_per_speaker_summary(session_name, per_speaker_text)
 
         if summary_type == SummaryType.conference_summary:
             if not full_text or not full_text.strip():
@@ -77,12 +78,13 @@ class SummaryService:
                 )
             speaker_count = len(per_speaker_text) if per_speaker_text else 0
 
-            return self.generate_full_conference_summary(full_text, speaker_count)
+            return self.generate_full_conference_summary(session_name, full_text, speaker_count)
 
         raise ValueError(f"Unknown summary_type: {summary_type}")
 
     def regenerate_summary(
         self,
+        session_name: str,
         summary_type: SummaryType,
         current_summary: dict[str, Any],
         per_speaker_text: dict[str, str],
@@ -100,6 +102,7 @@ class SummaryService:
 
         if summary_type == SummaryType.speaker_summary:
             return self.regenerate_per_speaker_summary(
+                session_name= session_name,
                 current_summary=normalized_summary,
                 per_speaker_text=per_speaker_text,
                 improvement_instructions=improvement_instructions,
@@ -107,6 +110,7 @@ class SummaryService:
 
         if summary_type == SummaryType.conference_summary:
             return self.regenerate_full_conference_summary(
+                session_name= session_name,
                 current_summary=normalized_summary,
                 full_text=full_text,
                 speaker_count=len(per_speaker_text) if per_speaker_text else normalized_summary.get("speaker_count", 0),
@@ -117,7 +121,7 @@ class SummaryService:
 
     # ── Per-speaker summary ────────────────────────────────────────────────────
 
-    def generate_per_speaker_summary(self, per_speaker_text: dict[str, str]) -> dict:
+    def generate_per_speaker_summary(self, session_name: str, per_speaker_text: dict[str, str]) -> dict:
         """
         Generate a structured JSON summary for every speaker.
         Key points count is adaptive:
@@ -182,13 +186,14 @@ class SummaryService:
                 time.sleep(API_CALL_DELAY)
 
         return {
+            "session_name":      session_name,
             "speaker_count":     speaker_count,
             "speaker_summaries": speaker_summaries,
         }
 
     # ── Full conference summary ────────────────────────────────────────────────
 
-    def generate_full_conference_summary(self, full_text: str, speaker_count: int) -> dict:
+    def generate_full_conference_summary(self,session_name: str, full_text: str, speaker_count: int) -> dict:
         """
         Generate an executive-level full conference summary.
 
@@ -212,13 +217,14 @@ class SummaryService:
             logger.warning("Expected 10-12 main_points, got %d.", len(main_points))
 
         return {
-            "speaker_count": speaker_count,
+            "session_name":      session_name,
             "main_points":   main_points,
             "conclusion":   parsed.get("conclusions", []),
         }
 
     def regenerate_per_speaker_summary(
         self,
+        session_name: str,
         current_summary: dict[str, Any],
         per_speaker_text: dict[str, str],
         improvement_instructions: str,
@@ -277,12 +283,14 @@ class SummaryService:
                 time.sleep(API_CALL_DELAY)
 
         return {
+            "session_name":      session_name,
             "speaker_count": current_summary.get("speaker_count", total_speakers),
             "speaker_summaries": improved_summaries,
         }
 
     def regenerate_full_conference_summary(
         self,
+        session_name: str,
         current_summary: dict[str, Any],
         full_text: str,
         speaker_count: int,
@@ -312,7 +320,8 @@ class SummaryService:
             logger.warning("Expected 10-12 regenerated main_points, got %d.", len(main_points))
 
         return {
-            "speaker_count": speaker_count,
+            "session_name":      session_name,
+            # "speaker_count": speaker_count,
             "main_points": main_points,
             "conclusion": parsed.get("conclusions", []),
         }

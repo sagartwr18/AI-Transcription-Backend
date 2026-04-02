@@ -5,6 +5,7 @@ __pycache__/
 # Env
 .env
 
+venv/
 # OS
 .DS_Store
 Thumbs.db

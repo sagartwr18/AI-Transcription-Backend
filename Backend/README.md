@@ -57,3 +57,4 @@ uvicorn app.main:app --reload --port 8000
 
 - Assembly batch and realtime logic are implemented inside `app/services`.
 - Realtime live API runs in a background thread.
+- Summary generation can also be persisted to MongoDB by setting `MONGODB_URI`.
