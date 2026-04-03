@@ -7,6 +7,7 @@ from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile, Web
 
 from app.schemas.common import ApiResponse
 from app.schemas.transcription import (
+    AppendTranscriptRequest,
     AssemblyFinalizeRequest,
     AutoRealtimeStartRequest,
     RealtimeStartRequest,
@@ -129,6 +130,14 @@ def realtime_live_updates(
 def stop_live_session(body: SessionIdRequest) -> ApiResponse:
     try:
         data = real_service.stop_live_session(body.session_id)
+        if summary_mongo_service is not None and isinstance(data.get('final_result'), dict):
+            data['transcript_record_id'] = summary_mongo_service.save_transcript(
+                tracking_session_id=body.session_id,
+                provider_session_id=data.get('session_id'),
+                session_name=data.get('session_name', ''),
+                transcript_data=data['final_result'],
+                source_type='manual_realtime',
+            )
         return ApiResponse(
             success=True,
             message='Live session stop requested',
@@ -255,8 +264,21 @@ def list_active_auto_sessions() -> ApiResponse:
 
 @router.post('/real/auto/stop-live', response_model=ApiResponse)
 def stop_auto_live_session(body: SessionIdRequest) -> ApiResponse:
-    data = auto_diarization_service.stop_live_session(body.session_id)
-    return ApiResponse(success=True, message='Auto session stop requested', data=data)
+    try:
+        data = auto_diarization_service.stop_live_session(body.session_id)
+        if summary_mongo_service is not None and isinstance(data.get('final_result'), dict):
+            data['transcript_record_id'] = summary_mongo_service.save_transcript(
+                tracking_session_id=body.session_id,
+                provider_session_id=data.get('session_id'),
+                session_name=data.get('session_name', ''),
+                transcript_data=data['final_result'],
+                source_type='auto_realtime',
+            )
+        return ApiResponse(success=True, message='Auto session stop requested', data=data)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f'Auto stop session failed: {exc}') from exc
 
 
 @router.websocket('/real/auto/audio-stream')
@@ -364,6 +386,78 @@ def list_summaries() -> ApiResponse:
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f'Fetch summaries failed: {exc}') from exc
+
+
+@router.get('/transcripts/list', response_model=ApiResponse)
+def list_transcripts() -> ApiResponse:
+    if summary_mongo_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail='MongoDB storage is not configured. Set MONGODB_URI to enable this endpoint.',
+        )
+
+    try:
+        transcripts = summary_mongo_service.list_transcripts()
+        return ApiResponse(
+            success=True,
+            message='Transcripts fetched',
+            data={'transcripts': transcripts, 'count': len(transcripts)},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f'Fetch transcripts failed: {exc}') from exc
+
+
+@router.get('/transcripts/{transcript_record_id}', response_model=ApiResponse)
+def get_transcript(transcript_record_id: str) -> ApiResponse:
+    if summary_mongo_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail='MongoDB storage is not configured. Set MONGODB_URI to enable this endpoint.',
+        )
+
+    try:
+        transcript = summary_mongo_service.get_transcript(transcript_record_id)
+        if transcript is None:
+            raise HTTPException(status_code=404, detail='Transcript not found')
+
+        return ApiResponse(
+            success=True,
+            message='Transcript fetched',
+            data=transcript,
+        )
+    except InvalidId as exc:
+        raise HTTPException(status_code=400, detail='Invalid transcript id format') from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f'Fetch transcript failed: {exc}') from exc
+
+
+@router.post('/transcripts/append', response_model=ApiResponse)
+def append_transcript(payload: AppendTranscriptRequest) -> ApiResponse:
+    if summary_mongo_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail='MongoDB storage is not configured. Set MONGODB_URI to enable this endpoint.',
+        )
+
+    try:
+        merged_transcript = summary_mongo_service.append_transcript_to_existing(
+            target_transcript_record_id=payload.target_transcript_record_id,
+            source_transcript_record_id=payload.source_transcript_record_id,
+            session_name=payload.session_name,
+        )
+        return ApiResponse(
+            success=True,
+            message='Transcript appended successfully',
+            data=merged_transcript,
+        )
+    except InvalidId as exc:
+        raise HTTPException(status_code=400, detail='Invalid transcript id format') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f'Append transcript failed: {exc}') from exc
 
 
 @router.get('/summary/{summary_id}', response_model=ApiResponse)

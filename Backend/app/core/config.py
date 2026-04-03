@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     MONGODB_URI: str | None = None
     MONGODB_DB_NAME: str = 'ai_transcription'
     MONGODB_SUMMARIES_COLLECTION: str = 'summaries'
+    MONGODB_TRANSCRIPTS_COLLECTION: str = 'transcripts'
 
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / '.env', extra='ignore')
 

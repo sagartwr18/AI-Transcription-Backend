@@ -18,6 +18,21 @@ class SpeakerSwitchRequest(BaseModel):
 class SessionIdRequest(BaseModel):
     session_id: str
 
+
+class AppendTranscriptRequest(BaseModel):
+    target_transcript_record_id: str = Field(
+        ...,
+        description='Existing transcript record id that should receive appended transcript data.',
+    )
+    source_transcript_record_id: str = Field(
+        ...,
+        description='New transcript record id that should be appended into the target transcript.',
+    )
+    session_name: str = Field(
+        ...,
+        description='Updated session name to set on the target transcript record after append.',
+    )
+
 class RealtimeStartRequest(BaseModel):
     session_name: str = Field(..., description='Name of the realtime transcription session')
     speakers: list[str] = Field(                          # ✅ was: number_of_speakers: int
